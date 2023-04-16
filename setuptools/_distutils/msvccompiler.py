@@ -22,11 +22,17 @@ from .ccompiler import CCompiler, gen_lib_options
 from ._log import log
 
 _can_read_reg = False
+HKEYS = None
 try:
     import winreg
 
     _can_read_reg = True
-    hkey_mod = winreg
+    HKEYS = (
+        winreg.HKEY_USERS,
+        winreg.HKEY_CURRENT_USER,
+        winreg.HKEY_LOCAL_MACHINE,
+        winreg.HKEY_CLASSES_ROOT,
+    )
 
     RegOpenKeyEx = winreg.OpenKeyEx
     RegEnumKey = winreg.EnumKey
@@ -35,32 +41,29 @@ try:
 
 except ImportError:
     try:
-        import win32api
-        import win32con
+        import ctypes
 
         _can_read_reg = True
-        hkey_mod = win32con
+        HKEYS = (
+            0x80000003,
+            0x80000001,
+            0x80000002,
+            0x80000000,
+        )
 
-        RegOpenKeyEx = win32api.RegOpenKeyEx
-        RegEnumKey = win32api.RegEnumKey
-        RegEnumValue = win32api.RegEnumValue
-        RegError = win32api.error
+        advapi = ctypes.windll.advapi32
+        RegOpenKeyEx = advapi.RegOpenKeyExW
+        RegEnumKey = advapi.RegEnumKeyW
+        RegEnumValue = advapi.RegEnumValueW
+        RegError = OSError
     except ImportError:
         log.info(
             "Warning: Can't read registry to find the "
             "necessary compiler setting\n"
-            "Make sure that Python modules winreg, "
-            "win32api or win32con are installed."
+            "Make sure that Python modules winreg or"
+            "ctypes are installed."
         )
         pass
-
-if _can_read_reg:
-    HKEYS = (
-        hkey_mod.HKEY_USERS,
-        hkey_mod.HKEY_CURRENT_USER,
-        hkey_mod.HKEY_LOCAL_MACHINE,
-        hkey_mod.HKEY_CLASSES_ROOT,
-    )
 
 
 warnings.warn(
